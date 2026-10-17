@@ -1,0 +1,8 @@
+image: { repository: traefik/whoami, tag: v1.11.0 }
+port: 80
+replicas: 4
+healthPath: /health
+route: { enabled: true, path: /whoami }
+postgres: true
+s3: true
+cache: true
