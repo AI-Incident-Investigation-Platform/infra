@@ -1,0 +1,38 @@
+{{- $name := include "service.name" . }}
+{{- $p := .Values.platform }}
+{{- range $kind := list "postgres" "s3" }}
+{{- if index $.Values $kind }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: provision-{{ $kind }}-{{ $name }}
+  namespace: {{ $p.namespace }}
+  labels: {{- include "service.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "service.hook" -10 | nindent 4 }}
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: provision
+          image: {{ (index $p $kind).image }}
+          command: ["sh", "-c", {{ $.Files.Get (printf "files/provision-%s.sh" $kind) | quote }}]
+          env:
+            - { name: SERVICE, value: {{ $name | quote }} }
+            - name: PASSWORD
+              valueFrom: { secretKeyRef: { name: svc-{{ $name }}, key: password } }
+            {{- if eq $kind "postgres" }}
+            - { name: PGHOST, value: {{ $p.postgres.host | quote }} }
+            - name: PGUSER
+              valueFrom: { secretKeyRef: { name: {{ $p.postgres.superuserSecret }}, key: username } }
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $p.postgres.superuserSecret }}, key: password } }
+            {{- else }}
+            - { name: MASTER, value: {{ $p.s3.master | quote }} }
+            {{- end }}
+{{- end }}
+{{- end }}

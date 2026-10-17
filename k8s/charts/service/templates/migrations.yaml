@@ -1,0 +1,21 @@
+{{- if .Values.migrations }}
+{{- $name := include "service.name" . }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}-migrations
+  labels: {{- include "service.labels" . | nindent 4 }}
+  annotations:
+    {{- include "service.hook" 0 | nindent 4 }}
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrations
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: {{ toJson .Values.migrations }}
+          envFrom: [{ secretRef: { name: {{ $name }}-credentials } }]
+{{- end }}

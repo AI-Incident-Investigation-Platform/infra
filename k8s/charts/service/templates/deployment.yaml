@@ -1,0 +1,48 @@
+{{- $name := include "service.name" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels: {{- include "service.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicas }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "service.selector" . | nindent 6 }}
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata:
+      labels: {{- include "service.labels" . | nindent 8 }}
+      annotations:
+        checksum/credentials: {{ include (print $.Template.BasePath "/credentials.yaml") . | sha256sum }}
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {{- include "service.selector" . | nindent 14 }}
+      containers:
+        - name: {{ $name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.command }}
+          command: {{ toJson . }}
+          {{- end }}
+          ports:
+            - { name: http, containerPort: {{ .Values.port }} }
+          envFrom: [{ secretRef: { name: {{ $name }}-credentials } }]
+          env:
+            - { name: SERVICE_NAME, value: {{ $name | quote }} }
+            {{- range $k, $v := .Values.env }}
+            - { name: {{ $k }}, value: {{ $v | quote }} }
+            {{- end }}
+          {{- with .Values.healthPath }}
+          readinessProbe: { httpGet: { path: {{ . }}, port: http }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: {{ . }}, port: http }, periodSeconds: 10, failureThreshold: 3 }
+          {{- end }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
