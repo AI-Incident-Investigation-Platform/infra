@@ -1,0 +1,27 @@
+{{- $existing := (lookup "v1" "Secret" .Release.Namespace "cache-auth").data | default dict }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cache-auth
+  annotations:
+    helm.sh/resource-policy: keep
+stringData:
+  password: {{ get $existing "password" | b64dec | default (randAlphaNum 32) | quote }}
+---
+apiVersion: dragonflydb.io/v1alpha1
+kind: Dragonfly
+metadata:
+  name: cache
+spec:
+  replicas: {{ .Values.cache.replicas }}
+  args:
+    - --cache_mode=true
+    - --maxmemory={{ .Values.cache.maxMemory }}
+    - --proactor_threads=2
+  authentication:
+    passwordFromSecret:
+      name: cache-auth
+      key: password
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: {{ .Values.cache.memoryLimit }} }

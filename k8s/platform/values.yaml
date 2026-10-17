@@ -1,0 +1,14 @@
+gateway:
+  namespace: gateway
+  nodePort: 30080
+
+postgres:
+  instances: 2
+  storage: 2Gi
+
+cache:
+  replicas: 2
+  maxMemory: 512mb
+  memoryLimit: 768Mi
+
+appsNamespace: apps

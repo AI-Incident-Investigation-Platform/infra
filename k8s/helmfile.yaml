@@ -1,0 +1,66 @@
+repositories:
+  - name: cnpg
+    url: https://cloudnative-pg.github.io/charts
+  - name: seaweedfs
+    url: https://seaweedfs.github.io/seaweedfs/helm
+  - name: metrics-server
+    url: https://kubernetes-sigs.github.io/metrics-server/
+  - name: headlamp
+    url: https://kubernetes-sigs.github.io/headlamp/
+
+helmDefaults:
+  wait: true
+  timeout: 600
+
+releases:
+  - name: metrics-server
+    namespace: kube-system
+    chart: metrics-server/metrics-server
+    version: 3.14.0
+    values:
+      - args: [--kubelet-insecure-tls]
+
+  - name: envoy-gateway
+    namespace: envoy-gateway-system
+    createNamespace: true
+    chart: oci://docker.io/envoyproxy/gateway-helm
+    version: v1.9.2
+
+  - name: cnpg
+    namespace: cnpg-system
+    createNamespace: true
+    chart: cnpg/cloudnative-pg
+    version: 0.29.1
+
+  - name: dragonfly-operator
+    namespace: dragonfly-operator-system
+    createNamespace: true
+    chart: oci://ghcr.io/dragonflydb/dragonfly-operator/helm/dragonfly-operator
+    version: v1.7.0
+
+  - name: seaweedfs
+    namespace: data
+    createNamespace: true
+    chart: seaweedfs/seaweedfs
+    version: 4.48.0
+    values:
+      - platform/values/seaweedfs.yaml
+
+  - name: platform
+    namespace: data
+    chart: ./platform
+    needs:
+      - envoy-gateway-system/envoy-gateway
+      - cnpg-system/cnpg
+      - dragonfly-operator-system/dragonfly-operator
+      - data/seaweedfs
+
+  - name: headlamp
+    namespace: headlamp
+    createNamespace: true
+    chart: headlamp/headlamp
+    version: 0.46.0
+    values:
+      - platform/values/headlamp.yaml
+    needs:
+      - data/platform

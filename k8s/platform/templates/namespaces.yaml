@@ -1,0 +1,9 @@
+{{- range list .Values.gateway.namespace .Values.appsNamespace }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ . }}
+  labels:
+    app.kubernetes.io/part-of: AIIP
+{{- end }}

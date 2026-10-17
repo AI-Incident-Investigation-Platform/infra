@@ -1,0 +1,20 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg
+spec:
+  instances: {{ .Values.postgres.instances }}
+  enableSuperuserAccess: true
+  bootstrap:
+    initdb:
+      postInitSQL:
+        - REVOKE CONNECT ON DATABASE postgres FROM PUBLIC
+        - REVOKE CONNECT ON DATABASE template1 FROM PUBLIC
+      postInitApplicationSQL:
+        - REVOKE CONNECT ON DATABASE app FROM PUBLIC
+  storage:
+    size: {{ .Values.postgres.storage }}
+  postgresql:
+    parameters:
+      max_connections: "300"
+      log_min_duration_statement: "500ms"

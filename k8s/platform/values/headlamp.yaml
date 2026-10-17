@@ -1,0 +1,26 @@
+config:
+  baseURL: /headlamp
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: main
+      namespace: gateway
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /headlamp
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /headlamp/
+            statusCode: 302
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /headlamp
+      backendRefs:
+        - name: headlamp
+          port: 80

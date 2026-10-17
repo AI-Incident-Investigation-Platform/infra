@@ -1,0 +1,19 @@
+master:
+  enabled: false
+volume:
+  enabled: false
+  dataDirs:
+    - name: data
+      type: persistentVolumeClaim
+      maxVolumes: 100
+filer:
+  enabled: false
+allInOne:
+  enabled: true
+  s3:
+    enabled: true
+    enableAuth: true
+  data:
+    type: persistentVolumeClaim
+    size: 5Gi
+    storageClass: standard
