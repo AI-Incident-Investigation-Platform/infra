@@ -58,7 +58,10 @@ service:
 		"postgres_password = \"$$password\"" \
 		"" \
 		"[cache]" \
-		"url = \"redis://default:$(DRAGONFLY_PASSWORD)@$(SERVICE_HOST):6379/0\"" \
+		"host = \"$(SERVICE_HOST)\"" \
+		"port = 6379" \
+		"password = \"$(DRAGONFLY_PASSWORD)\"" \
+		"db = 0" \
 		"key_prefix = \"$(name):\"" \
 		"" \
 		"[s3]" \
