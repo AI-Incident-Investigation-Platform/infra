@@ -2,7 +2,6 @@
 
 -include .env
 
-SERVICE_HOST ?= localhost
 CHECK_NAME = @echo "$(name)" | grep -Eqx '[a-z][a-z0-9-]{0,40}' || { echo "использование: make $@ name=<имя из a-z, 0-9, ->"; exit 1; }
 RUN = docker compose exec -T -e SERVICE=$(name)
 
@@ -46,6 +45,7 @@ logs:
 
 service:
 	$(CHECK_NAME)
+	@test -n "$(SERVICE_HOST)" || { echo "задай SERVICE_HOST в .env: адрес, по которому сервисы ходят в инфру"; exit 1; }
 	@password=$$(openssl rand -hex 16); \
 	$(RUN) -e PASSWORD=$$password postgres sh -s < postgres/provision.sh >&2 && \
 	$(RUN) -e PASSWORD=$$password seaweedfs sh -s < seaweedfs/provision.sh >&2 && \
