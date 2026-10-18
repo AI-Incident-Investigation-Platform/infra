@@ -10,7 +10,7 @@ help:
 	@echo ""
 	@echo "  Инфра"
 	@echo "    env                       создать .env из .env.example"
-	@echo "    up                        поднять Postgres, Dragonfly, SeaweedFS, Consul"
+	@echo "    up                        поднять Postgres, Dragonfly, SeaweedFS, Consul, Jaeger"
 	@echo "    down                      остановить, данные остаются"
 	@echo "    restart                   перезапустить"
 	@echo "    logs                      логи всех контейнеров"
@@ -27,6 +27,7 @@ help:
 	@echo "  Веб-интерфейсы"
 	@echo "    http://localhost:8500     Consul"
 	@echo "    http://localhost:8888     файлы S3"
+	@echo "    http://localhost:16686    Jaeger: трейсы запросов"
 	@echo ""
 
 env:
@@ -68,7 +69,10 @@ service:
 		"region = \"us-east-1\"" \
 		"" \
 		"[registry]" \
-		"consul_url = \"http://$(SERVICE_HOST):8500\""
+		"consul_url = \"http://$(SERVICE_HOST):8500\"" \
+		"" \
+		"[tracing]" \
+		"otlp_endpoint = \"http://$(SERVICE_HOST):4318\""
 
 service-drop:
 	$(CHECK_NAME)
