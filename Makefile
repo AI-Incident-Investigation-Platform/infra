@@ -9,7 +9,7 @@ help:
 	@echo ""
 	@echo "  Инфра"
 	@echo "    env                       создать .env из .env.example"
-	@echo "    up                        создать сеть aiip и поднять Postgres, Dragonfly, SeaweedFS, Consul, Jaeger"
+	@echo "    up                        включить Swarm, создать сеть aiip и поднять Postgres, Dragonfly, SeaweedFS, Consul, Jaeger"
 	@echo "    down                      остановить, данные остаются"
 	@echo "    restart                   перезапустить"
 	@echo "    logs                      логи всех контейнеров"
@@ -33,7 +33,9 @@ env:
 	@test -f .env && echo ".env уже есть" || { cp .env.example .env; echo "создан .env, поменяй пароли change-me"; }
 
 up:
-	@docker network inspect aiip >/dev/null 2>&1 || docker network create aiip >/dev/null
+	@[ "$$(docker info --format '{{.Swarm.LocalNodeState}}')" = active ] || docker swarm init --task-history-limit 0 >/dev/null
+	@! docker network inspect -f '{{.Scope}}' aiip 2>/dev/null | grep -qx local || { echo "aiip — сеть старой схемы: останови infra, gateway и сервисы, удали её (docker network rm aiip) и повтори"; exit 1; }
+	@docker network inspect aiip >/dev/null 2>&1 || docker network create --driver bridge --scope swarm --attachable aiip >/dev/null
 	docker compose up -d --wait
 
 down:
