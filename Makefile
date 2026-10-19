@@ -9,7 +9,7 @@ help:
 	@echo ""
 	@echo "  Инфра"
 	@echo "    env                       создать .env из .env.example"
-	@echo "    up                        поднять Postgres, Dragonfly, SeaweedFS, Consul, Jaeger"
+	@echo "    up                        создать сеть aiip и поднять Postgres, Dragonfly, SeaweedFS, Consul, Jaeger"
 	@echo "    down                      остановить, данные остаются"
 	@echo "    restart                   перезапустить"
 	@echo "    logs                      логи всех контейнеров"
@@ -33,6 +33,7 @@ env:
 	@test -f .env && echo ".env уже есть" || { cp .env.example .env; echo "создан .env, поменяй пароли change-me"; }
 
 up:
+	@docker network inspect aiip >/dev/null 2>&1 || docker network create aiip >/dev/null
 	docker compose up -d --wait
 
 down:
@@ -45,37 +46,36 @@ logs:
 
 service:
 	$(CHECK_NAME)
-	@test -n "$(SERVICE_HOST)" || { echo "задай SERVICE_HOST в .env: адрес, по которому сервисы ходят в инфру"; exit 1; }
 	@password=$$(openssl rand -hex 16); \
 	$(RUN) -e PASSWORD=$$password postgres sh -s < postgres/provision.sh >&2 && \
 	$(RUN) -e PASSWORD=$$password seaweedfs sh -s < seaweedfs/provision.sh >&2 && \
 	printf '%s\n' "" \
 		"[database]" \
-		"postgres_host = \"$(SERVICE_HOST)\"" \
+		"postgres_host = \"postgres\"" \
 		"postgres_port = 5432" \
 		"postgres_db = \"$(name)\"" \
 		"postgres_username = \"$(name)\"" \
 		"postgres_password = \"$$password\"" \
 		"" \
 		"[cache]" \
-		"host = \"$(SERVICE_HOST)\"" \
+		"host = \"dragonfly\"" \
 		"port = 6379" \
 		"password = \"$(DRAGONFLY_PASSWORD)\"" \
 		"db = 0" \
 		"key_prefix = \"$(name):\"" \
 		"" \
 		"[s3]" \
-		"endpoint_url = \"http://$(SERVICE_HOST):8333\"" \
+		"endpoint_url = \"http://seaweedfs:8333\"" \
 		"access_key = \"$(name)\"" \
 		"secret_key = \"$$password\"" \
 		"bucket = \"$(name)\"" \
 		"region = \"us-east-1\"" \
 		"" \
 		"[registry]" \
-		"consul_url = \"http://$(SERVICE_HOST):8500\"" \
+		"consul_url = \"http://consul:8500\"" \
 		"" \
 		"[tracing]" \
-		"otlp_endpoint = \"http://$(SERVICE_HOST):4318\""
+		"otlp_endpoint = \"http://jaeger:4318\""
 
 service-drop:
 	$(CHECK_NAME)

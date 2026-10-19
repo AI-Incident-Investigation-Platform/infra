@@ -23,7 +23,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
     ports:
-      - "${BIND_HOST:-127.0.0.1}:5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -45,7 +45,7 @@ services:
     volumes:
       - dragonfly_data:/data
     ports:
-      - "${BIND_HOST:-127.0.0.1}:6379:6379"
+      - "127.0.0.1:6379:6379"
     ulimits:
       memlock: -1
     mem_limit: 768m
@@ -74,7 +74,7 @@ services:
     volumes:
       - seaweedfs_data:/data
     ports:
-      - "${BIND_HOST:-127.0.0.1}:8333:8333"
+      - "127.0.0.1:8333:8333"
       - "127.0.0.1:8888:8888"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/healthz"]
@@ -98,7 +98,7 @@ services:
     volumes:
       - consul_data:/consul/data
     ports:
-      - "${BIND_HOST:-127.0.0.1}:8500:8500"
+      - "127.0.0.1:8500:8500"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -112,8 +112,8 @@ services:
     image: jaegertracing/jaeger:2.22.0
     restart: unless-stopped
     ports:
-      - "${BIND_HOST:-127.0.0.1}:4317:4317"
-      - "${BIND_HOST:-127.0.0.1}:4318:4318"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
       - "127.0.0.1:16686:16686"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:13133/status"]
@@ -121,6 +121,11 @@ services:
       timeout: 5s
       retries: 10
     logging: *logging
+
+networks:
+  default:
+    name: aiip
+    external: true
 
 volumes:
   postgres_data:
