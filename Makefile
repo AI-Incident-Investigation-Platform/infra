@@ -1,4 +1,4 @@
-.PHONY: help env up down restart logs service service-drop registry psql cache-cli
+.PHONY: help env up down restart logs service service-drop psql cache-cli
 
 -include .env
 
@@ -9,22 +9,20 @@ help:
 	@echo ""
 	@echo "  Инфра"
 	@echo "    env                       создать .env из .env.example"
-	@echo "    up                        включить Swarm, создать сеть aiip и поднять Postgres, Dragonfly, SeaweedFS, Consul, Jaeger"
+	@echo "    up                        создать сеть aiip и поднять Postgres, Dragonfly, SeaweedFS, Jaeger"
 	@echo "    down                      остановить, данные остаются"
 	@echo "    restart                   перезапустить"
 	@echo "    logs                      логи всех контейнеров"
 	@echo ""
 	@echo "  Микросервисы"
 	@echo "    service name=<имя>        выдать сервису БД, бакет и напечатать блок для config.toml"
-	@echo "    service-drop name=<имя>   снести сервис: БД, роль, бакет, S3-юзер, ключи кэша, записи в Consul"
-	@echo "    registry                  экземпляры в Consul и их статус"
+	@echo "    service-drop name=<имя>   снести сервис: БД, роль, бакет, S3-юзер, ключи кэша"
 	@echo ""
 	@echo "  Данные"
 	@echo "    psql                      psql суперюзером"
 	@echo "    cache-cli                 redis-cli в Dragonfly"
 	@echo ""
 	@echo "  Веб-интерфейсы"
-	@echo "    http://localhost:8500     Consul"
 	@echo "    http://localhost:8888     файлы S3"
 	@echo "    http://localhost:16686    Jaeger: трейсы запросов"
 	@echo ""
@@ -33,9 +31,7 @@ env:
 	@test -f .env && echo ".env уже есть" || { cp .env.example .env; echo "создан .env, поменяй пароли change-me"; }
 
 up:
-	@[ "$$(docker info --format '{{.Swarm.LocalNodeState}}')" = active ] || docker swarm init --task-history-limit 0 >/dev/null
-	@! docker network inspect -f '{{.Scope}}' aiip 2>/dev/null | grep -qx local || { echo "aiip — сеть старой схемы: останови infra, gateway и сервисы, удали её (docker network rm aiip) и повтори"; exit 1; }
-	@docker network inspect aiip >/dev/null 2>&1 || docker network create --driver bridge --scope swarm --attachable aiip >/dev/null
+	@docker network inspect aiip >/dev/null 2>&1 || docker network create aiip >/dev/null
 	docker compose up -d --wait
 
 down:
@@ -73,9 +69,6 @@ service:
 		"bucket = \"$(name)\"" \
 		"region = \"us-east-1\"" \
 		"" \
-		"[registry]" \
-		"consul_url = \"http://consul:8500\"" \
-		"" \
 		"[tracing]" \
 		"otlp_endpoint = \"http://jaeger:4318\""
 
@@ -86,10 +79,6 @@ service-drop:
 	@$(RUN) postgres sh -s < postgres/drop.sh
 	@$(RUN) seaweedfs sh -s < seaweedfs/drop.sh
 	@$(RUN) dragonfly sh -s < dragonfly/drop.sh
-	@$(RUN) consul sh -s < consul/drop.sh
-
-registry:
-	@docker compose exec -T consul sh -s < consul/registry.sh
 
 psql:
 	docker compose exec postgres sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'

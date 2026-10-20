@@ -84,30 +84,6 @@ services:
       start_period: 10s
     logging: *logging
 
-  consul:
-    image: hashicorp/consul:2.0.4
-    restart: unless-stopped
-    command:
-      - agent
-      - -server
-      - -bootstrap-expect=1
-      - -ui
-      - -client=0.0.0.0
-      - -data-dir=/consul/data
-      - -node=consul
-    volumes:
-      - consul_data:/consul/data
-    ports:
-      - "127.0.0.1:8500:8500"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD-SHELL", "consul members >/dev/null"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    logging: *logging
-
   jaeger:
     image: jaegertracing/jaeger:2.22.0
     restart: unless-stopped
@@ -131,4 +107,3 @@ volumes:
   postgres_data:
   dragonfly_data:
   seaweedfs_data:
-  consul_data:
