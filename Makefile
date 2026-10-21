@@ -1,4 +1,4 @@
-.PHONY: help env up start stop delete namespaces secret apply status logs dashboard service psql cache-cli
+.PHONY: help env up start stop delete namespaces secret apply status logs dashboard forward service psql cache-cli
 
 -include .env
 
@@ -33,10 +33,11 @@ help:
 	@echo "    cache-cli                 redis-cli в Dragonfly"
 	@echo ""
 	@echo "  С хоста"
-	@echo "    http://localhost          вход в систему через Traefik"
-	@echo "    localhost:5432 / 6379 / 8333   Postgres / Dragonfly / S3"
-	@echo "    http://localhost:8888     файлы S3"
-	@echo "    http://localhost:16686    Jaeger: трейсы запросов"
+	@echo "    http://localhost, https://localhost   единственный вход: Traefik"
+	@echo "    forward                   пока работает, открывает инфру на localhost:"
+	@echo "                              5432 / 6379 / 8333 Postgres / Dragonfly / S3,"
+	@echo "                              4318 приём трейсов, http://localhost:8888 файлы S3,"
+	@echo "                              http://localhost:16686 Jaeger; Ctrl+C закрывает"
 	@echo ""
 
 env:
@@ -79,6 +80,15 @@ logs:
 
 dashboard:
 	kubectl --context $(CONTEXT) -n kube-system port-forward deploy/traefik 8080:8080
+
+forward:
+	@trap 'kill 0' INT TERM; \
+	$(KUBECTL) port-forward svc/postgres 5432 >/dev/null & \
+	$(KUBECTL) port-forward svc/dragonfly 6379 >/dev/null & \
+	$(KUBECTL) port-forward svc/seaweedfs 8333 8888 >/dev/null & \
+	$(KUBECTL) port-forward svc/jaeger 4318 16686 >/dev/null & \
+	echo "инфра открыта на localhost: 5432 6379 8333 8888 4318 16686, Ctrl+C закрывает"; \
+	wait
 
 service:
 	$(CHECK_NAME)

@@ -69,7 +69,6 @@ kind: Service
 metadata:
   name: seaweedfs
 spec:
-  type: NodePort
   selector:
     app: seaweedfs
   ports:
@@ -82,8 +81,6 @@ spec:
     - name: filer
       port: 8888
       targetPort: filer
-      nodePort: 30888
     - name: s3
       port: 8333
       targetPort: s3
-      nodePort: 30333
