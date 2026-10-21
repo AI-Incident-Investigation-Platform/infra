@@ -1,0 +1,21 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    logs:
+      general:
+        format: json
+      access:
+        enabled: true
+        format: json
+    tracing:
+      serviceName: gateway
+      sampleRate: 1.0
+      otlp:
+        enabled: true
+        http:
+          enabled: true
+          endpoint: http://jaeger.infra.svc:4318/v1/traces
