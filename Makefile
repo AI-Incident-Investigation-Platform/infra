@@ -1,4 +1,4 @@
-.PHONY: help env up down restart logs service service-drop psql cache-cli
+.PHONY: help env up down restart logs service psql cache-cli
 
 -include .env
 
@@ -16,7 +16,6 @@ help:
 	@echo ""
 	@echo "  Микросервисы"
 	@echo "    service name=<имя>        выдать сервису БД, бакет и напечатать блок для config.toml"
-	@echo "    service-drop name=<имя>   снести сервис: БД, роль, бакет, S3-юзер, ключи кэша"
 	@echo ""
 	@echo "  Данные"
 	@echo "    psql                      psql суперюзером"
@@ -71,14 +70,6 @@ service:
 		"" \
 		"[tracing]" \
 		"otlp_endpoint = \"http://jaeger:4318\""
-
-service-drop:
-	$(CHECK_NAME)
-	@printf 'Удалятся БД, бакет и кэш сервиса $(name) без возможности вернуть. Введи имя для подтверждения: '; \
-	read answer; [ "$$answer" = "$(name)" ] || { echo "отменено"; exit 1; }
-	@$(RUN) postgres sh -s < postgres/drop.sh
-	@$(RUN) seaweedfs sh -s < seaweedfs/drop.sh
-	@$(RUN) dragonfly sh -s < dragonfly/drop.sh
 
 psql:
 	docker compose exec postgres sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
