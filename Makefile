@@ -7,17 +7,17 @@ CONTEXT := k3d-$(CLUSTER)
 NS := infra
 APPS_NS := apps
 KUBECTL := kubectl --context $(CONTEXT) -n $(NS)
-STATEFUL := postgres dragonfly seaweedfs
+STATEFUL := postgres dragonfly seaweedfs loki tempo prometheus alloy grafana
 
 CHECK_NAME = @echo "$(name)" | grep -Eqx '[a-z][a-z0-9-]{0,40}' || { echo "использование: make $@ name=<имя из a-z, 0-9, ->"; exit 1; }
-RUN = $(KUBECTL) exec -i statefulset/$(1) -- env SERVICE=$(name)
+RUN = $(KUBECTL) exec -i statefulset/$(1) -c $(1) -- env SERVICE=$(name)
 
 help:
 	@echo ""
 	@echo "  Кластер k3d"
 	@echo "    env                       создать .env из .env.example"
 	@echo "    up                        создать или запустить кластер, раскатить Postgres, Dragonfly,"
-	@echo "                              SeaweedFS, Jaeger и настройки Traefik"
+	@echo "                              SeaweedFS, наблюдаемость и настройки Traefik"
 	@echo "    stop                      остановить кластер, данные остаются"
 	@echo "    start                     запустить остановленный кластер"
 	@echo "    delete                    удалить кластер вместе со всеми данными"
@@ -34,10 +34,11 @@ help:
 	@echo ""
 	@echo "  С хоста"
 	@echo "    http://localhost, https://localhost   единственный вход: Traefik"
+	@echo "    http://grafana.localhost  Grafana: логи, трейсы, метрики; пароль admin в .env"
 	@echo "    forward                   пока работает, открывает инфру на localhost:"
 	@echo "                              5432 / 6379 / 8333 Postgres / Dragonfly / S3,"
-	@echo "                              4318 приём трейсов, http://localhost:8888 файлы S3,"
-	@echo "                              http://localhost:16686 Jaeger; Ctrl+C закрывает"
+	@echo "                              4318 приём трейсов, http://localhost:8888 файлы S3;"
+	@echo "                              Ctrl+C закрывает"
 	@echo ""
 
 env:
@@ -70,13 +71,14 @@ apply:
 	kubectl --context $(CONTEXT) apply -k k8s
 	kubectl --context $(CONTEXT) apply -f traefik.yaml
 	@for s in $(STATEFUL); do $(KUBECTL) rollout status statefulset/$$s --timeout=300s || exit 1; done
-	$(KUBECTL) rollout status deploy/jaeger --timeout=300s
+	@$(KUBECTL) exec -i statefulset/postgres -c postgres -- env PASSWORD=$(POSTGRES_MONITORING_PASSWORD) sh -s < postgres/monitoring.sh
+	$(KUBECTL) rollout status deploy/kube-state-metrics --timeout=300s
 
 status:
 	$(KUBECTL) get pods,svc,pvc -o wide
 
 logs:
-	$(KUBECTL) logs -l 'app in (postgres,dragonfly,seaweedfs,jaeger)' --prefix --tail=100 -f
+	$(KUBECTL) logs -l 'app in (postgres,dragonfly,seaweedfs,loki,tempo,prometheus,alloy,grafana,kube-state-metrics)' --prefix --tail=100 -f
 
 dashboard:
 	kubectl --context $(CONTEXT) -n kube-system port-forward deploy/traefik 8080:8080
@@ -86,8 +88,8 @@ forward:
 	$(KUBECTL) port-forward svc/postgres 5432 >/dev/null & \
 	$(KUBECTL) port-forward svc/dragonfly 6379 >/dev/null & \
 	$(KUBECTL) port-forward svc/seaweedfs 8333 8888 >/dev/null & \
-	$(KUBECTL) port-forward svc/jaeger 4318 16686 >/dev/null & \
-	echo "инфра открыта на localhost: 5432 6379 8333 8888 4318 16686, Ctrl+C закрывает"; \
+	$(KUBECTL) port-forward svc/alloy 4318 >/dev/null & \
+	echo "инфра открыта на localhost: 5432 6379 8333 8888 4318, Ctrl+C закрывает"; \
 	wait
 
 service:
@@ -118,10 +120,10 @@ service:
 		"region = \"us-east-1\"" \
 		"" \
 		"[tracing]" \
-		"otlp_endpoint = \"http://jaeger.$(NS):4318\""
+		"otlp_endpoint = \"http://alloy.$(NS):4318\""
 
 psql:
-	$(KUBECTL) exec -it statefulset/postgres -- sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
+	$(KUBECTL) exec -it statefulset/postgres -c postgres -- sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
 cache-cli:
 	$(KUBECTL) exec -it statefulset/dragonfly -- sh -c 'REDISCLI_AUTH="$$DFLY_requirepass" redis-cli'

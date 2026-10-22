@@ -12,6 +12,9 @@ spec:
     metadata:
       labels:
         app: postgres
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9187"
     spec:
       containers:
         - name: postgres
@@ -44,6 +47,22 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql
+        - name: exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+          env:
+            - name: DATA_SOURCE_USER
+              value: monitoring
+            - name: DATA_SOURCE_PASS
+              valueFrom:
+                secretKeyRef: { name: infra, key: POSTGRES_MONITORING_PASSWORD }
+            - name: DATA_SOURCE_URI
+              value: localhost:5432/postgres?sslmode=disable
+          ports:
+            - name: metrics
+              containerPort: 9187
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
   volumeClaimTemplates:
     - metadata:
         name: data

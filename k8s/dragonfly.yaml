@@ -12,6 +12,9 @@ spec:
     metadata:
       labels:
         app: dragonfly
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "6379"
     spec:
       containers:
         - name: dragonfly

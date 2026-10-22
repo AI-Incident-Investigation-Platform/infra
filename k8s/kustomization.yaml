@@ -5,4 +5,24 @@ resources:
   - postgres.yaml
   - dragonfly.yaml
   - seaweedfs.yaml
-  - jaeger.yaml
+  - loki.yaml
+  - tempo.yaml
+  - prometheus.yaml
+  - alloy.yaml
+  - kube-state-metrics.yaml
+  - grafana.yaml
+configMapGenerator:
+  - name: loki
+    files: [config/loki.yaml]
+  - name: tempo
+    files: [config/tempo.yaml]
+  - name: prometheus
+    files: [config/prometheus.yaml]
+  - name: alloy
+    files: [config/alloy.alloy]
+  - name: grafana-datasources
+    files: [config/grafana-datasources.yaml]
+  - name: grafana-dashboard-providers
+    files: [config/grafana-dashboards.yaml]
+  - name: grafana-dashboards
+    files: [config/grafana-overview.json]

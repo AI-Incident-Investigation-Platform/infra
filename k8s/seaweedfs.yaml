@@ -12,6 +12,9 @@ spec:
     metadata:
       labels:
         app: seaweedfs
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9327"
     spec:
       containers:
         - name: seaweedfs
@@ -25,6 +28,7 @@ spec:
             - -volume.max=100
             - -s3
             - -s3.port=8333
+            - -metricsPort=9327
           env:
             - name: POD_IP
               valueFrom:
@@ -44,6 +48,8 @@ spec:
               containerPort: 8888
             - name: s3
               containerPort: 8333
+            - name: metrics
+              containerPort: 9327
           readinessProbe:
             httpGet:
               path: /healthz
