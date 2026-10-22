@@ -65,6 +65,8 @@ namespaces:
 	@for ns in $(NS) $(APPS_NS); do kubectl --context $(CONTEXT) create namespace $$ns --dry-run=client -o yaml | kubectl --context $(CONTEXT) apply -f - >/dev/null; done
 
 secret:
+	@missing=$$(for key in $$(grep -o '^[A-Z0-9_]*=' .env.example); do grep -q "^$$key" .env || printf ' %s' "$${key%=}"; done); \
+	[ -z "$$missing" ] || { echo "в .env нет:$$missing — перенеси из .env.example и задай значения"; exit 1; }
 	@$(KUBECTL) create secret generic infra --from-env-file=.env --dry-run=client -o yaml | $(KUBECTL) apply -f -
 
 apply:
