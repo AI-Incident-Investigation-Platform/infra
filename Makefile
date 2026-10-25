@@ -1,4 +1,4 @@
-.PHONY: help env up start stop delete namespaces secret apply status logs dashboard forward service psql cache-cli
+.PHONY: observability-apply help env up start stop delete namespaces secret apply status logs dashboard forward service psql cache-cli
 
 -include .env
 
@@ -22,6 +22,7 @@ help:
 	@echo "    start                     запустить остановленный кластер"
 	@echo "    delete                    удалить кластер вместе со всеми данными"
 	@echo "    status                    поды, сервисы и тома инфры"
+	@echo "    observability-apply       применить конфигурацию и обновить дашборды Grafana"
 	@echo "    logs                      логи инфры"
 	@echo "    dashboard                 дашборд Traefik на http://localhost:8080/dashboard/"
 	@echo ""
@@ -129,3 +130,7 @@ psql:
 
 cache-cli:
 	$(KUBECTL) exec -it statefulset/dragonfly -- sh -c 'REDISCLI_AUTH="$$DFLY_requirepass" redis-cli'
+
+observability-apply:
+	kubectl --context $(CONTEXT) apply -k k8s
+	$(KUBECTL) rollout status statefulset/grafana --timeout=180s

@@ -25,4 +25,4 @@ configMapGenerator:
   - name: grafana-dashboard-providers
     files: [config/grafana-dashboards.yaml]
   - name: grafana-dashboards
-    files: [config/grafana-overview.json]
+    files: [config/grafana-overview.json, config/grafana-service.json, config/grafana-infrastructure.json, config/grafana-dragonfly.json, config/grafana-traefik.json]
