@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: apps
+  namespace: apps
+spec:
+  hard:
+    requests.cpu: "6"
+    requests.memory: 4608Mi
+    limits.memory: 5Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: apps
+  namespace: apps
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi

@@ -1,0 +1,21 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: keda
+  namespace: kube-system
+spec:
+  repo: https://kedacore.github.io/charts
+  chart: keda
+  version: 2.21.0
+  targetNamespace: keda
+  createNamespace: true
+  valuesContent: |-
+    webhooks:
+      enabled: false
+    resources:
+      operator:
+        requests: { cpu: 20m, memory: 64Mi }
+        limits: { cpu: 500m, memory: 256Mi }
+      metricServer:
+        requests: { cpu: 20m, memory: 64Mi }
+        limits: { cpu: 500m, memory: 256Mi }

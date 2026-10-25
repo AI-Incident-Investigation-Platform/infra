@@ -13,3 +13,8 @@ ports:
     nodeFilters: [loadbalancer]
   - port: 127.0.0.1:443:443
     nodeFilters: [loadbalancer]
+options:
+  k3s:
+    extraArgs:
+      - arg: --kube-controller-manager-arg=horizontal-pod-autoscaler-sync-period=5s
+        nodeFilters: [server:*]

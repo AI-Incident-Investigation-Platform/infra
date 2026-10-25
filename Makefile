@@ -73,9 +73,13 @@ secret:
 apply:
 	kubectl --context $(CONTEXT) apply -k k8s
 	kubectl --context $(CONTEXT) apply -f traefik.yaml
+	kubectl --context $(CONTEXT) apply -f apps.yaml
+	kubectl --context $(CONTEXT) apply -f keda.yaml
 	@for s in $(STATEFUL); do $(KUBECTL) rollout status statefulset/$$s --timeout=300s || exit 1; done
 	@$(KUBECTL) exec -i statefulset/postgres -c postgres -- env PASSWORD=$(POSTGRES_MONITORING_PASSWORD) sh -s < postgres/monitoring.sh
 	$(KUBECTL) rollout status deploy/kube-state-metrics --timeout=300s
+	@for i in $$(seq 150); do kubectl --context $(CONTEXT) -n keda get deploy keda-operator >/dev/null 2>&1 && break; sleep 2; done
+	kubectl --context $(CONTEXT) -n keda rollout status deploy --timeout=300s
 
 status:
 	$(KUBECTL) get pods,svc,pvc -o wide
