@@ -131,8 +131,35 @@ discovery.relabel "annotated_pods" {
   }
 }
 
+discovery.relabel "app_pods" {
+  targets = discovery.relabel.annotated_pods.output
+
+  rule {
+    source_labels = ["namespace"]
+    regex         = "apps"
+    action        = "keep"
+  }
+}
+
+discovery.relabel "infra_pods" {
+  targets = discovery.relabel.annotated_pods.output
+
+  rule {
+    source_labels = ["namespace"]
+    regex         = "apps"
+    action        = "drop"
+  }
+}
+
+prometheus.scrape "app_pods" {
+  targets         = discovery.relabel.app_pods.output
+  scrape_interval = "5s"
+  scrape_timeout  = "4s"
+  forward_to      = [prometheus.remote_write.default.receiver]
+}
+
 prometheus.scrape "pods" {
-  targets         = discovery.relabel.annotated_pods.output
+  targets         = discovery.relabel.infra_pods.output
   scrape_interval = "15s"
   forward_to      = [prometheus.remote_write.default.receiver]
 }
