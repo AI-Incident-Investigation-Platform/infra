@@ -4,6 +4,7 @@ namespace: infra
 resources:
   - postgres.yaml
   - dragonfly.yaml
+  - rabbitmq.yaml
   - seaweedfs.yaml
   - loki.yaml
   - tempo.yaml
@@ -12,6 +13,8 @@ resources:
   - kube-state-metrics.yaml
   - grafana.yaml
 configMapGenerator:
+  - name: rabbitmq
+    files: [config/rabbitmq.conf, config/enabled_plugins]
   - name: loki
     files: [config/loki.yaml]
   - name: tempo

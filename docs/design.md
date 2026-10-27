@@ -15,6 +15,7 @@
 |---|---|---|
 | Postgres | 18.6 | `postgres.infra:5432` |
 | Dragonfly | 2.0.2 | `dragonfly.infra:6379` |
+| RabbitMQ | 4.3.5 | `rabbitmq.infra:5672` (AMQP), `http://rabbitmq.localhost` (UI) через Traefik |
 | SeaweedFS (S3) | 4.48 | `seaweedfs.infra:8333` |
 | Alloy | 1.21.1 | `alloy.infra:4317` (OTLP gRPC), `alloy.infra:4318` (OTLP HTTP) |
 | Loki | 3.7.9 | `loki.infra` |
@@ -53,9 +54,10 @@
 
 ## Выдача ресурсов сервису
 
-`make service name=<имя>` запускает `postgres/provision.sh` и
-`seaweedfs/provision.sh` внутри подов инфры: роль и БД в Postgres, бакет и
-S3-пользователь, префикс ключей `<имя>:` в кэше. Суперпароль Postgres
+`make service name=<имя>` запускает `postgres/provision.sh`,
+`seaweedfs/provision.sh` и `rabbitmq/provision.sh` внутри подов инфры: роль
+и БД в Postgres, бакет и S3-пользователь, пользователь RabbitMQ с правами
+на vhost `aiip`, префикс ключей `<имя>:` в кэше. Суперпароль Postgres
 сервисам не выдаётся. Роль `monitoring` с `pg_monitor` для экспортёра
 создаёт `make up` (`postgres/monitoring.sh`).
 
@@ -81,7 +83,8 @@ S3-пользователь, префикс ключей `<имя>:` в кэше
   сервисов в Prometheus. Сэмплирование — 100%.
 - **Метрики** — Prometheus, 15 дней и не больше 4 ГБ; сам ничего не
   собирает, только принимает от Alloy и Tempo. Метрики отдают сервисы,
-  Traefik, Postgres (экспортёр в поде Postgres), Dragonfly, SeaweedFS.
+  Traefik, Postgres (экспортёр в поде Postgres), Dragonfly, RabbitMQ
+  (плагин `rabbitmq_prometheus`, метрики по каждой очереди), SeaweedFS.
 - **Связки в Grafana**: из строки лога по `trace_id` — в трейс, из спана —
   в логи запроса, из трейса — в метрики сервиса.
 - Сквозной идентификатор — `trace_id` OpenTelemetry. Сервисы отдают его
@@ -121,6 +124,13 @@ KEDA ставится чартом (`keda.yaml`) и масштабирует с�
   OpenObserve — свой UI вместо Grafana. Логи приложений в Postgres не
   пишутся: журнал событий, нужный продукту, — данные сервиса в его таблицах.
   Alloy — один экземпляр; на нескольких нодах станет DaemonSet.
+- **RabbitMQ для задач между сервисами** (2026-10-27): письма и другая
+  работа, результат которой клиенту не нужен сразу, идут задачей в брокер;
+  воркеры масштабируются KEDA по длине очереди из Prometheus
+  (`rabbitmq_queue_messages_ready`). Один vhost `aiip` на все сервисы:
+  отправитель и исполнитель работают с общими exchange. Topology объявляет
+  исполнитель. Один узел, quorum-очереди. Dragonfly Streams отброшены:
+  Dragonfly у нас в режиме кэша и может вытеснять ключи.
 - **Автоскейлинг KEDA по нагрузке** (2026-10-25): до ~12 сервисов на одной
   ноде, поэтому производительность — за счёт гибкости (дешёвые `requests`,
   масштабирование по насыщению), а не выделенных ресурсов.

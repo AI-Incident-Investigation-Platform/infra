@@ -1,4 +1,4 @@
-.PHONY: observability-apply help env up start stop delete namespaces secret apply status logs dashboard forward service psql cache-cli
+.PHONY: observability-apply help env up start stop delete namespaces secret apply status logs dashboard forward service psql cache-cli rabbitmqctl
 
 -include .env
 
@@ -7,7 +7,7 @@ CONTEXT := k3d-$(CLUSTER)
 NS := infra
 APPS_NS := apps
 KUBECTL := kubectl --context $(CONTEXT) -n $(NS)
-STATEFUL := postgres dragonfly seaweedfs loki tempo prometheus alloy grafana
+STATEFUL := postgres dragonfly rabbitmq seaweedfs loki tempo prometheus alloy grafana
 
 CHECK_NAME = @echo "$(name)" | grep -Eqx '[a-z][a-z0-9-]{0,40}' || { echo "использование: make $@ name=<имя из a-z, 0-9, ->"; exit 1; }
 RUN = $(KUBECTL) exec -i statefulset/$(1) -c $(1) -- env SERVICE=$(name)
@@ -17,7 +17,7 @@ help:
 	@echo "  Кластер k3d"
 	@echo "    env                       создать .env из .env.example"
 	@echo "    up                        создать или запустить кластер, раскатить Postgres, Dragonfly,"
-	@echo "                              SeaweedFS, наблюдаемость и настройки Traefik"
+	@echo "                              RabbitMQ, SeaweedFS, наблюдаемость и настройки Traefik"
 	@echo "    stop                      остановить кластер, данные остаются"
 	@echo "    start                     запустить остановленный кластер"
 	@echo "    delete                    удалить кластер вместе со всеми данными"
@@ -27,17 +27,20 @@ help:
 	@echo "    dashboard                 дашборд Traefik на http://localhost:8080/dashboard/"
 	@echo ""
 	@echo "  Микросервисы"
-	@echo "    service name=<имя>        выдать сервису БД, бакет и напечатать блок для config.toml"
+	@echo "    service name=<имя>        выдать сервису БД, бакет, пользователя RabbitMQ и напечатать"
+	@echo "                              блок для config.toml"
 	@echo ""
 	@echo "  Данные"
 	@echo "    psql                      psql суперюзером"
 	@echo "    cache-cli                 redis-cli в Dragonfly"
+	@echo "    rabbitmqctl               rabbitmqctl в RabbitMQ"
 	@echo ""
 	@echo "  С хоста"
 	@echo "    http://localhost, https://localhost   единственный вход: Traefik"
 	@echo "    http://grafana.localhost  Grafana: логи, трейсы, метрики; пароль admin в .env"
+	@echo "    http://rabbitmq.localhost RabbitMQ: очереди и сообщения; логин и пароль в .env"
 	@echo "    forward                   пока работает, открывает инфру на localhost:"
-	@echo "                              5432 / 6379 / 8333 Postgres / Dragonfly / S3,"
+	@echo "                              5432 / 6379 / 5672 / 8333 Postgres / Dragonfly / RabbitMQ / S3,"
 	@echo "                              4318 приём трейсов, http://localhost:8888 файлы S3;"
 	@echo "                              Ctrl+C закрывает"
 	@echo ""
@@ -85,7 +88,7 @@ status:
 	$(KUBECTL) get pods,svc,pvc -o wide
 
 logs:
-	$(KUBECTL) logs -l 'app in (postgres,dragonfly,seaweedfs,loki,tempo,prometheus,alloy,grafana,kube-state-metrics)' --prefix --tail=100 -f
+	$(KUBECTL) logs -l 'app in (postgres,dragonfly,rabbitmq,seaweedfs,loki,tempo,prometheus,alloy,grafana,kube-state-metrics)' --prefix --tail=100 -f
 
 dashboard:
 	kubectl --context $(CONTEXT) -n kube-system port-forward deploy/traefik 8080:8080
@@ -94,9 +97,10 @@ forward:
 	@trap 'kill 0' INT TERM; \
 	$(KUBECTL) port-forward svc/postgres 5432 >/dev/null & \
 	$(KUBECTL) port-forward svc/dragonfly 6379 >/dev/null & \
+	$(KUBECTL) port-forward svc/rabbitmq 5672 >/dev/null & \
 	$(KUBECTL) port-forward svc/seaweedfs 8333 8888 >/dev/null & \
 	$(KUBECTL) port-forward svc/alloy 4318 >/dev/null & \
-	echo "инфра открыта на localhost: 5432 6379 8333 8888 4318, Ctrl+C закрывает"; \
+	echo "инфра открыта на localhost: 5432 6379 5672 8333 8888 4318, Ctrl+C закрывает"; \
 	wait
 
 service:
@@ -104,6 +108,7 @@ service:
 	@password=$$(openssl rand -hex 16); \
 	$(call RUN,postgres) PASSWORD=$$password sh -s < postgres/provision.sh >&2 && \
 	$(call RUN,seaweedfs) PASSWORD=$$password sh -s < seaweedfs/provision.sh >&2 && \
+	$(call RUN,rabbitmq) PASSWORD=$$password sh -s < rabbitmq/provision.sh >&2 && \
 	printf '%s\n' "" \
 		"[database]" \
 		"postgres_host = \"postgres.$(NS)\"" \
@@ -119,6 +124,9 @@ service:
 		"db = 0" \
 		"key_prefix = \"$(name):\"" \
 		"" \
+		"[rabbitmq]" \
+		"url = \"amqp://$(name):$$password@rabbitmq.$(NS):5672/aiip\"" \
+		"" \
 		"[s3]" \
 		"endpoint_url = \"http://seaweedfs.$(NS):8333\"" \
 		"access_key = \"$(name)\"" \
@@ -131,6 +139,9 @@ service:
 
 psql:
 	$(KUBECTL) exec -it statefulset/postgres -c postgres -- sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
+
+rabbitmqctl:
+	$(KUBECTL) exec -it statefulset/rabbitmq -c rabbitmq -- rabbitmqctl
 
 cache-cli:
 	$(KUBECTL) exec -it statefulset/dragonfly -- sh -c 'REDISCLI_AUTH="$$DFLY_requirepass" redis-cli'

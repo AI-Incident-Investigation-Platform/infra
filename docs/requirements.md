@@ -13,7 +13,7 @@ Baseline предложен команде и ещё не принят.
 | Требование | Статус | Комментарий |
 |---|---|---|
 | k3d-кластер `aiip`, namespaces `infra` и `apps` | есть | |
-| В `infra`: Postgres, Dragonfly, SeaweedFS, Loki, Prometheus, Tempo, Alloy, Grafana | есть | плюс kube-state-metrics и KEDA |
+| В `infra`: Postgres, Dragonfly, SeaweedFS, Loki, Prometheus, Tempo, Alloy, Grafana | есть | плюс RabbitMQ, kube-state-metrics и KEDA |
 | Traefik — вход для браузерного API, UI и Grafana | есть | UI пока нет: место — Ingress на `/` |
 | Вызовы между сервисами — по DNS Service Kubernetes | есть | |
 | В `apps`: main-backend, auth, ai-backend, mcp-server, demo-payment-service | частично | развёрнут `auth`; остальные выкатываются из своих репозиториев |
