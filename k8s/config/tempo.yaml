@@ -20,6 +20,20 @@ metrics_generator:
     remote_write:
       - url: http://prometheus:9090/api/v1/write
         send_exemplars: true
+live_store:
+  max_live_traces_bytes: 33554432
+  max_block_bytes: 8388608
+  complete_block_concurrency: 1
+querier:
+  max_concurrent_queries: 2
+backend_worker:
+  compaction:
+    max_block_bytes: 33554432
+    retention_concurrency: 1
+backend_scheduler:
+  provider:
+    compaction:
+      max_input_blocks: 2
 storage:
   trace:
     backend: local

@@ -52,6 +52,9 @@ spec:
             - --server.http.listen-addr=0.0.0.0:12345
             - --storage.path=/var/lib/alloy
             - --disable-reporting
+          env:
+            - name: GOMEMLIMIT
+              value: 400MiB
           ports:
             - name: http
               containerPort: 12345

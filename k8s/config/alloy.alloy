@@ -236,6 +236,52 @@ otelcol.receiver.otlp "default" {
   }
 
   output {
+    traces = [otelcol.processor.memory_limiter.default.input]
+  }
+}
+
+otelcol.processor.memory_limiter "default" {
+  check_interval = "1s"
+  limit          = "320MiB"
+  spike_limit    = "64MiB"
+
+  output {
+    traces = [otelcol.processor.tail_sampling.default.input]
+  }
+}
+
+otelcol.processor.tail_sampling "default" {
+  decision_wait = "5s"
+  num_traces    = 10000
+
+  policy {
+    name = "errors"
+    type = "status_code"
+
+    status_code {
+      status_codes = ["ERROR"]
+    }
+  }
+
+  policy {
+    name = "slow"
+    type = "latency"
+
+    latency {
+      threshold_ms = 500
+    }
+  }
+
+  policy {
+    name = "sample"
+    type = "probabilistic"
+
+    probabilistic {
+      sampling_percentage = 10
+    }
+  }
+
+  output {
     traces = [otelcol.processor.batch.default.input]
   }
 }
